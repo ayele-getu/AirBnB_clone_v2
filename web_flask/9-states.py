@@ -1,32 +1,31 @@
 #!/usr/bin/python3
-"""import flask"""
+"""start flask and set a route"""
+
 from flask import Flask, render_template
 from models import storage
+from models.state import State
 
 app = Flask(__name__)
 
 
-@app.route("/states", strict_slashes=False)
-def fetchStates():
-    """ displays html of all states"""
-    states = storage.all("State")
-    return render_template('9-states.html', states=states)
-
-
-@app.route("/states/<id>", strict_slashes=False)
-def fetchStateById(id):
-    """fetch state by id, if it exits"""
-    for states in storage.all("State").values():
-        if states.id == id:
-            return render_template("9-states.html", states=states)
-    return render_template('9-states.html')
-
-
 @app.teardown_appcontext
-def removeSession(exception):
-    """ teardown current sql session"""
+def close(self):
+    """Closes sessions"""
     storage.close()
 
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+@app.route('/states', strict_slashes=False)
+@app.route('/states/<id>', strict_slashes=False)
+def state_id(id=None):
+    """states by id"""
+    state = None
+    states = storage.all(State)
+    if id:
+        _id = "State." + id
+        if _id in states.keys():
+            state = states[_id]
+    return render_template('9-states.html', **locals())
+
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port="5000")
