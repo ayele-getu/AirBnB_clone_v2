@@ -21,18 +21,21 @@ class FileStorage:
     __objects = {}
 
     def all(self, cls=None):
-        """returns a dictionary
-        Return:
-            returns a dictionary of __object
+        """Returns all the objects
+        If a class is specified, the method only
+        returns the objects of same type.
         """
+
         if cls:
-            dic = {}
-            for key, val in self.__objects.items():
-                if type(val) == cls:
-                    dic[key] = self.__objects[key]
-            return dic
-        else:
-            return self.__objects
+            same_type = dict()
+
+            for key, obj in self.__objects.items():
+                if obj.__class__ == cls:
+                    same_type[key] = obj
+
+            return same_type
+
+        return self.__objects
 
     def new(self, obj):
         """sets __object to given obj
@@ -64,11 +67,15 @@ class FileStorage:
             pass
 
     def delete(self, obj=None):
-        """ deletes an object """
+        """Delete obj from __objects if it's inside
+        """
         if obj:
             key = "{}.{}".format(type(obj).__name__, obj.id)
-            del self.__objects[key]
+
+            if self.__objects[key]:
+                del self.__objects[key]
+                self.save()
 
     def close(self):
-        """ reload method"""
+        """Deserialize JSON file to objects. Call the reload method."""
         self.reload()

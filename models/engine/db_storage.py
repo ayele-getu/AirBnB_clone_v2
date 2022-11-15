@@ -1,79 +1,100 @@
 #!/usr/bin/python3
-""" DataBase storage"""
-import json
-from os import getenv
-
-from models.base_model import BaseModel
-from models.base_model import Base
+"""This is the DB storage class for AirBnB"""
+from models.base_model import BaseModel, Base
 from models.user import User
 from models.state import State
 from models.city import City
 from models.amenity import Amenity
 from models.place import Place
 from models.review import Review
-from sqlalchemy import (create_engine)
+from os import getenv
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
+
+all_classes = {"State", "City", "Amenity", "User", "Place", "Review"}
 
 
 class DBStorage:
-    """ Data base storage definition """
+    """...
+    Attributes:
+        __engine: The SQLAlchemy engine
+        __session: The SQLAlchemy session
+    """
 
     __engine = None
     __session = None
 
     def __init__(self):
-        user = getenv("HBNB_MYSQL_USER")
-        pwd = getenv("HBNB_MYSQL_PWD")
-        host = getenv("HBNB_MYSQL_HOST")
-        env = getenv("HBNB_ENV")
-        database = getenv("HBNB_MYSQL_DB")
-        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'
-                                      .format(user, pwd, host, database),
-                                      pool_pre_ping=True)
+        """Initialize a connection with MySQL
+        and create tables
+        """
 
-        if env == "test":
+        db_uri = "{0}+{1}://{2}:{3}@{4}:3306/{5}".format(
+            'mysql', 'mysqldb', getenv('HBNB_MYSQL_USER'),
+            getenv('HBNB_MYSQL_PWD'), getenv('HBNB_MYSQL_HOST'),
+            getenv('HBNB_MYSQL_DB'))
+
+        self.__engine = create_engine(db_uri, pool_pre_ping=True)
+        self.reload()
+
+        if getenv('HBNB_ENV') == 'test':
             Base.metadata.drop_all(self.__engine)
 
     def all(self, cls=None):
-        """ query on the current database session and return a dict """
-        dic = {}
-        ls = [State, City, User, Place, Review, Amenity]
+        """...
+        """
+        entities = dict()
 
-        if cls is not None:
-            if type(cls) is str:
-                cls = eval(cls)
-            query = self.__session.query(cls)
-            for elem in query:
-                key = "{}.{}".format(type(elem).__name__, elem.id)
-                dic[key] = elem
-        else:
-            for state in ls:
-                query = self.__session.query(state)
-                for elem in query:
-                    key = "{}.{}".format(type(elem).__name__, elem.id)
-                    dic[key] = elem
-        return (dic)
+        if cls:
+            return self.get_data_from_table(cls, entities)
+
+        for entity in all_classes:
+            entities = self.get_data_from_table(eval(entity), entities)
+
+        return entities
 
     def new(self, obj):
-        """ add the object to the current database session """
-        self.__session.add(obj)
+        """Add obj to the current database session.
+        """
+        if obj:
+            self.__session.add(obj)
 
     def save(self):
-        """ commit all changes of the current database session """
+        """Commit all changes to the current database session.
+        """
+
         self.__session.commit()
 
     def delete(self, obj=None):
-        """ delete from the current database session obj """
-        if obj:
-            self.session.delete(obj)
+        """Delete obj from the current database session.
+        """
+
+        if obj is not None:
+            self.__session.delete(obj)
 
     def reload(self):
-        """ creates the current database session """
+        """Create all tables into database and initialize a new session.
+        """
+
         Base.metadata.create_all(self.__engine)
-        ses = sessionmaker(bind=self.__engine, expire_on_commit=False)
-        Session = scoped_session(ses)
+        session_factory = sessionmaker(bind=self.__engine,
+                                       expire_on_commit=False)
+        Session = scoped_session(session_factory)
         self.__session = Session()
 
+    def get_data_from_table(self, cls, structure):
+        """Get the data from a MySQL Table
+        """
+
+        if type(structure) is dict:
+            query = self.__session.query(cls)
+
+            for _row in query.all():
+                key = "{}.{}".format(cls.__name__, _row.id)
+                structure[key] = _row
+
+            return structure
+
     def close(self):
-        """ session close """
+        """Close the working SQLAlchemy session."""
         self.__session.close()
