@@ -1,21 +1,23 @@
 #!/usr/bin/python3
-""" Script that runs a Flask app """
+"""import flask"""
 from flask import Flask, render_template
 from models import storage
+
 app = Flask(__name__)
 
 
+@app.route("/states_list", strict_slashes=False)
+def fetchStates():
+    """ displays html of all states"""
+    states = storage.all("State")
+    return render_template('7-states_list.html', states=states)
+
+
 @app.teardown_appcontext
-def closing(error):
-    """closes session """
+def removeSession(exception):
+    """ teardown current sql session"""
     storage.close()
 
 
-@app.route('/states_list', strict_slashes=False)
-def states():
-    """ function that returns text"""
-    state = storage.all()
-    return render_template('7-states_list.html', state=state)
-
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=5000)
